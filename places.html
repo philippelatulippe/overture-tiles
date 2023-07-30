@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
     <head>
         <title>Overture Places</title>
@@ -8,17 +9,59 @@
         <script src="https://unpkg.com/pmtiles@2.10.0-beta.0/dist/index.js"></script>
         <script src="https://unpkg.com/protomaps-themes-base@1.3.1/dist/index.js"></script>
         <style>
+            html {
+                height: 100%;
+            }
             body {
                 margin: 0;
+                height: 100%;
             }
             #map {
                 height:100%; width:100%;
             }
+
+            #poiInfo {
+                background-color: rgba(255, 255, 240, 0.92);
+                max-width: 512px;
+                max-height: 50%;
+                position: absolute;
+                float: left;
+                z-index: 1;
+                font-family: sans-serif;
+                padding: 16px;
+            }
+
+            #poiInfoClose {
+                display: none;
+            }
+
+            #poiInfoCloseLabel {
+                float: right;
+                margin: 16px;
+                cursor: pointer;
+            }
+
+            #poiInfoClose:checked + #poiInfo {
+                display: none;
+            }
         </style>
     </head>
     <body>
-        <div id="map"></div>
         <div id="overlay">
+            <input type="checkbox" id="poiInfoClose">
+            <div id="poiInfo" class="panel">
+                <label for="poiInfoClose" id="poiInfoCloseLabel">&#10006;</label>
+                <h1 id="poiName">Click on a POI for information</h1>
+                <p id="poiDesc"></p>
+                <table id="poiProperties">
+                    <tr>
+                        <th>Property</th>
+                        <th>Value</th>
+                    </tr>
+                </table>
+            </div>
+        </div>
+        <div id="map"></div>
         <script type="text/javascript">
             let protocol = new pmtiles.Protocol();
             maplibregl.setRTLTextPlugin('https://unpkg.com/@mapbox/mapbox-gl-rtl-text@0.2.3/mapbox-gl-rtl-text.js');
@@ -89,12 +132,52 @@
                 }
             });
 
-            map.on('mousedown', function (e) {
+            map.on('mouseenter', 'overture-pois', () => {
+                map.getCanvas().style.cursor = 'pointer';
+            });
+
+            map.on('mouseleave', 'overture-pois', () => {
+                map.getCanvas().style.cursor = '';
+            });
+            
+            map.on('click', function (e) {
                 var features = map.queryRenderedFeatures(e.point);
                 features.map(feat => {
                     console.log(feat);
                 });
+
+                let poi = features.find(feature => { return feature.layer.id === "overture-pois"; });
+
+                if (poi == null) {
+                    hideInfo();
+                } else {
+                    displayInfo(poi.properties.name, poi.properties.category_main, poi.properties);
+                }
             });
+
+            function displayInfo(name, description, properties) {
+                let closeToggle = document.getElementById("poiInfoClose");
+                let header = document.getElementById("poiName");
+                let paragraph = document.getElementById("poiDesc");
+                let table = document.getElementById("poiProperties");
+                
+                header.textContent = name;
+                paragraph.textContent = description;
+
+                let oldRows = Array.from(table.getElementsByTagName("tr")).slice(1);
+
+                oldRows.forEach( row => { row.remove(); });
+
+                const rows = Object.keys(properties).map( key => { return `<tr><td>${key}</td><td>${properties[key]}</td></tr>`; });
+                table.innerHTML += rows.join('');
+                
+                closeToggle.checked = false;
+            }
+
+            function hideInfo() {
+                let = closeToggle = document.getElementById("poiInfoClose");
+                closeToggle.checked = true;
+            }
         </script>
     </body>
 </html>
